@@ -2,147 +2,271 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=380">
-  <link rel="stylesheet" href="popup.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Volumetric Analyst</title>
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-
-<h1><span class="flask">🧪</span> VOLUMETRIC ANALYST</h1>
-
-<div class="info-bar">
-  Based on Grade 12 Chemistry (Nepal Curriculum):<br>
-  Concentration units · Equivalent weight · Law of equivalence · Titration calculations
-</div>
-
-<!-- Unit Converter -->
-<div class="section">
-  <button class="section-header open" type="button">
-    🧮 Unit Converter <span class="arrow">▶</span>
-  </button>
-  <div class="section-body open">
-    <label>Value</label>
-    <input type="number" id="uc-val" placeholder="Enter value" min="0" step="any">
-
-    <div class="row">
-      <div>
-        <label>From</label>
-        <select id="uc-from">
-          <option value="M">Molarity (M)</option>
-          <option value="N">Normality (N)</option>
-          <option value="g/L">g/L</option>
-          <option value="%(w/v)">% (w/v)</option>
-          <option value="ppm">ppm</option>
-        </select>
+  <div class="container">
+    <header>
+      <img src="icon.png" alt="Flask" class="header-icon">
+      <h1> Volumetric Analyst</h1>
+      <p class="subtitle">Grade 12 Chemistry Toolkit </p>
+    </header>
+    <div class="section">
+      <button class="accordion-btn active" data-section="converter">▼ Unit Converter</button>
+      <div class="accordion-panel" id="converter" style="display:block;">
+        <div class="row">
+          <div class="field">
+            <label>Value</label>
+            <input type="number" id="conv-value" placeholder="e.g. 0.1" step="any">
+          </div>
+          <div class="field">
+            <label>From</label>
+            <select id="conv-from">
+              <option value="M">Molarity (M)</option>
+              <option value="N">Normality (N)</option>
+              <option value="gL">g/L</option>
+              <option value="pctWV">% (w/v)</option>
+              <option value="pctWW">% (w/w)</option>
+              <option value="ppm">ppm</option>
+              <option value="ppb">ppb</option>
+              <option value="m">Molality (m)</option>
+              <option value="F">Formality (F)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>To</label>
+            <select id="conv-to">
+              <option value="N">Normality (N)</option>
+              <option value="M">Molarity (M)</option>
+              <option value="gL">g/L</option>
+              <option value="pctWV">% (w/v)</option>
+              <option value="pctWW">% (w/w)</option>
+              <option value="ppm">ppm</option>
+              <option value="ppb">ppb</option>
+              <option value="m">Molality (m)</option>
+              <option value="F">Formality (F)</option>
+            </select>
+          </div>
+        </div>
+        <div class="row optional-fields">
+          <div class="field optional">
+            <label>Molar mass (g/mol)</label>
+            <input type="number" id="conv-mm" placeholder="e.g. 98.08" step="any">
+          </div>
+          <div class="field optional">
+            <label>Density (g/mL)</label>
+            <input type="number" id="conv-density" placeholder="e.g. 1.0" step="any">
+          </div>
+          <div class="field optional">
+            <label>n-factor</label>
+            <input type="number" id="conv-nfactor" placeholder="e.g. 2" step="any" value="1">
+          </div>
+        </div>
+        <button class="btn-primary" id="conv-btn">CONVERT</button>
+        <div class="result-box" id="conv-result"></div>
       </div>
-      <div>
-        <label>To</label>
-        <select id="uc-to">
-          <option value="M">Molarity (M)</option>
-          <option value="N" selected>Normality (N)</option>
-          <option value="g/L">g/L</option>
-          <option value="%(w/v)">% (w/v)</option>
-          <option value="ppm">ppm</option>
-        </select>
+    </div>
+    <div class="section">
+      <button class="accordion-btn" data-section="titration">▶ Titration Solver </button>
+      <div class="accordion-panel" id="titration" style="display:none;">
+        <p class="hint">Leave exactly <strong>one</strong> field blank to solve for it. Uses N₁V₁ = N₂V₂ or M₁n₁V₁ = M₂n₂V₂</p>
+        <fieldset>
+          <legend>Solution 1 (Titrant)</legend>
+          <div class="row">
+            <div class="field"><label>Conc.</label><input type="number" id="t-c1" step="any" placeholder="?"></div>
+            <div class="field"><label>Unit</label>
+              <select id="t-u1"><option value="M">M</option><option value="N">N</option></select>
+            </div>
+            <div class="field"><label>n-factor</label><input type="number" id="t-n1" value="1" step="any"></div>
+            <div class="field"><label>Vol (mL)</label><input type="number" id="t-v1" step="any" placeholder="?"></div>
+          </div>
+        </fieldset>
+        <fieldset>
+          <legend>Solution 2 (Analyte)</legend>
+          <div class="row">
+            <div class="field"><label>Conc.</label><input type="number" id="t-c2" step="any" placeholder="?"></div>
+            <div class="field"><label>Unit</label>
+              <select id="t-u2"><option value="M">M</option><option value="N">N</option></select>
+            </div>
+            <div class="field"><label>n-factor</label><input type="number" id="t-n2" value="1" step="any"></div>
+            <div class="field"><label>Vol (mL)</label><input type="number" id="t-v2" step="any" placeholder="?"></div>
+          </div>
+        </fieldset>
+        <div class="row">
+          <div class="field">
+            <label>Titration type</label>
+            <select id="t-type">
+              <option value="sa-sb">Strong acid vs Strong base</option>
+              <option value="wa-sb">Weak acid vs Strong base</option>
+              <option value="sa-wb">Strong acid vs Weak base</option>
+              <option value="permanganometry">Permanganometry (KMnO₄)</option>
+              <option value="dichromatometry">Dichromatometry (K₂Cr₂O₇)</option>
+              <option value="iodometry">Iodometry (Na₂S₂O₃ + I₂)</option>
+              <option value="redox">Other Redox titration</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn-primary" id="titr-btn">SOLVE</button>
+        <div class="result-box" id="titr-result"></div>
+        <div class="working-box" id="titr-working"></div>
+      </div>
+    </div>
+    <div class="section">
+      <button class="accordion-btn" data-section="dilution">▶ Dilution Calculator</button>
+      <div class="accordion-panel" id="dilution" style="display:none;">
+        <p class="hint">M₁V₁ = M₂V₂ — Leave one field blank to solve.</p>
+        <div class="row">
+          <div class="field"><label>M₁ (before)</label><input type="number" id="d-m1" step="any" placeholder="e.g. 0.5"></div>
+          <div class="field"><label>V₁ (before, mL)</label><input type="number" id="d-v1" step="any" placeholder="e.g. 30"></div>
+        </div>
+        <div class="row">
+          <div class="field"><label>M₂ (after)</label><input type="number" id="d-m2" step="any" placeholder="?"></div>
+          <div class="field"><label>V₂ (after, mL)</label><input type="number" id="d-v2" step="any" placeholder="?"></div>
+        </div>
+        <button class="btn-primary" id="dil-btn">CALCULATE</button>
+        <div class="result-box" id="dil-result"></div>
+        <div class="working-box" id="dil-working"></div>
+      </div>
+    </div>
+    <div class="section">
+      <button class="accordion-btn" data-section="eqwt">▶ Equivalent Weight</button>
+      <div class="accordion-panel" id="eqwt" style="display:none;">
+        <div class="row">
+          <div class="field">
+            <label>Molar mass (g/mol)</label>
+            <input type="number" id="eq-mm" placeholder="e.g. 158" step="any">
+          </div>
+          <div class="field">
+            <label>Substance type</label>
+            <select id="eq-type">
+              <option value="acid">Acid</option>
+              <option value="base">Base</option>
+              <option value="salt">Salt</option>
+              <option value="oxidising">Oxidising agent</option>
+              <option value="reducing">Reducing agent</option>
+              <option value="element">Element</option>
+              <option value="radical">Radical / Ion</option>
+            </select>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label>n-factor</label>
+            <input type="number" id="eq-nf" placeholder="auto or manual" step="any">
+          </div>
+          <div class="field" style="align-self:flex-end;">
+            <button class="btn-secondary" id="eq-example-btn">📋 Examples</button>
+          </div>
+        </div>
+        <button class="btn-primary" id="eq-btn">CALCULATE</button>
+        <div class="result-box" id="eq-result"></div>
+        <div class="examples-box" id="eq-examples" style="display:none;">
+          <table>
+            <tr><th>Substance</th><th>M (g/mol)</th><th>n</th><th>Eq. wt.</th><th>Type</th></tr>
+            <tr><td>HCl</td><td>36.46</td><td>1</td><td>36.46</td><td>Acid (basicity=1)</td></tr>
+            <tr><td>H₂SO₄</td><td>98.08</td><td>2</td><td>49.04</td><td>Acid (basicity=2)</td></tr>
+            <tr><td>H₃PO₄</td><td>98.00</td><td>3</td><td>32.67</td><td>Acid (basicity=3)</td></tr>
+            <tr><td>NaOH</td><td>40.00</td><td>1</td><td>40.00</td><td>Base (acidity=1)</td></tr>
+            <tr><td>Ca(OH)₂</td><td>74.09</td><td>2</td><td>37.05</td><td>Base (acidity=2)</td></tr>
+            <tr><td>Mg(OH)₂</td><td>58.00</td><td>2</td><td>29.00</td><td>Base (acidity=2)</td></tr>
+            <tr><td>Na₂CO₃</td><td>105.99</td><td>2</td><td>53.00</td><td>Salt (charge=2)</td></tr>
+            <tr><td>CaSO₄</td><td>136.00</td><td>2</td><td>68.00</td><td>Salt (charge=2)</td></tr>
+            <tr><td>Fe₂(SO₄)₃</td><td>400.00</td><td>6</td><td>66.67</td><td>Salt (charge=6)</td></tr>
+            <tr><td>KMnO₄ (acidic)</td><td>158.03</td><td>5</td><td>31.61</td><td>Oxidising</td></tr>
+            <tr><td>KMnO₄ (neutral)</td><td>158.03</td><td>3</td><td>52.68</td><td>Oxidising</td></tr>
+            <tr><td>KMnO₄ (alkaline)</td><td>158.03</td><td>1</td><td>158.03</td><td>Oxidising</td></tr>
+            <tr><td>K₂Cr₂O₇</td><td>294.18</td><td>6</td><td>49.03</td><td>Oxidising</td></tr>
+            <tr><td>Na₂S₂O₃</td><td>158.10</td><td>1</td><td>158.10</td><td>Reducing</td></tr>
+            <tr><td>H₂C₂O₄</td><td>90.03</td><td>2</td><td>45.02</td><td>Reducing</td></tr>
+            <tr><td>FeSO₄</td><td>151.91</td><td>1</td><td>151.91</td><td>Reducing</td></tr>
+            <tr><td>Mg (element)</td><td>24.31</td><td>2</td><td>12.16</td><td>Element (v=2)</td></tr>
+            <tr><td>CO₃²⁻ (radical)</td><td>60.01</td><td>2</td><td>30.01</td><td>Radical (charge=2)</td></tr>
+          </table>
+        </div>
       </div>
     </div>
 
-    <div id="uc-mm-wrap" class="conditional show">
-      <label>Molar Mass (g/mol)</label>
-      <input type="number" id="uc-mm" placeholder="e.g. 98" min="0" step="any">
-    </div>
-    <div id="uc-nf-wrap" class="conditional show">
-      <label>n-factor</label>
-      <input type="number" id="uc-nf" placeholder="e.g. 2" min="0" step="any">
+    <!-- Quick Reference -->
+    <div class="section">
+      <button class="accordion-btn" data-section="ref">▶ Quick Reference</button>
+      <div class="accordion-panel" id="ref" style="display:none;">
+        <div class="ref-card">
+          <h3>Equivalent Weight (§1.1–1.2)</h3>
+          <p><code>E = Atomic mass / Valency</code> (for elements)</p>
+          <p><code>E = Molar mass / n-factor</code> (for compounds)</p>
+          <table>
+            <tr><th>Type</th><th>n-factor Rule</th></tr>
+            <tr><td>Acid</td><td>Basicity (no. of replaceable H⁺)</td></tr>
+            <tr><td>Base</td><td>Acidity (no. of OH⁻ ions)</td></tr>
+            <tr><td>Salt</td><td>Total +ve charge on cation</td></tr>
+            <tr><td>Oxidising</td><td>Total electrons gained</td></tr>
+            <tr><td>Reducing</td><td>Total electrons lost</td></tr>
+            <tr><td>Radical</td><td>Total charge on radical</td></tr>
+          </table>
+
+          <h3>Concentration Units (§1.4)</h3>
+          <p><code>M = moles of solute / L of solution</code></p>
+          <p><code>N = gram equivalents / L of solution</code></p>
+          <p><code>m = moles of solute / kg of solvent</code></p>
+          <p><code>g/L = mass(g) / volume(L)</code></p>
+          <p><code>%w/v = mass(g) / 100 mL solution</code></p>
+          <p><code>%w/w = mass(g) / 100 g solution</code></p>
+          <p><code>ppm = parts per million (mg/L)</code></p>
+          <p><code>ppb = parts per billion (µg/L)</code></p>
+
+          <h3>Key Relations (§1.4)</h3>
+          <p><code>N = M × n-factor</code></p>
+          <p><code>g/L = %w/v × 10</code></p>
+          <p><code>M = g/L ÷ Molar mass</code></p>
+          <p><code>ppb = ppm × 1000</code></p>
+
+          <h3>Normality Equation (§1.6)</h3>
+          <p><code>N₁V₁ = N₂V₂</code></p>
+          <p><code>M₁n₁V₁ = M₂n₂V₂</code></p>
+
+          <h3>Dilution (§1.6)</h3>
+          <p><code>M₁V₁ = M₂V₂</code> (moles remain constant)</p>
+
+          <h3>Common Indicators (§1.7)</h3>
+          <table>
+            <tr><th>Indicator</th><th>Acid colour</th><th>pH range</th><th>Base colour</th></tr>
+            <tr><td>Methyl orange</td><td>Red</td><td>3–5</td><td>Yellow</td></tr>
+            <tr><td>Litmus</td><td>Red</td><td>5–8</td><td>Blue</td></tr>
+            <tr><td>Phenolphthalein</td><td>Colourless</td><td>8–10</td><td>Pink</td></tr>
+          </table>
+          <table>
+            <tr><th>Titration</th><th>Indicator</th></tr>
+            <tr><td>Strong acid + Strong base</td><td>Any (Methyl orange / Phenolphthalein)</td></tr>
+            <tr><td>Weak acid + Strong base</td><td>Phenolphthalein</td></tr>
+            <tr><td>Strong acid + Weak base</td><td>Methyl orange</td></tr>
+            <tr><td>KMnO₄ titration</td><td>Self-indicator (pink → colourless)</td></tr>
+            <tr><td>Iodometric titration</td><td>Starch (blue → colourless)</td></tr>
+          </table>
+
+          <h3>Primary Standards (§1.5)</h3>
+          <p>Na₂CO₃, H₂C₂O₄, Na₂C₂O₄, K₂Cr₂O₇, Mohr's salt</p>
+          <p>Properties: High purity, stable, non-hygroscopic, soluble</p>
+
+          <h3>Secondary Standards (§1.5)</h3>
+          <p>NaOH, HCl, H₂SO₄, KMnO₄, Na₂S₂O₃</p>
+
+          <h3>Titration Types (§1.7)</h3>
+          <p>• Permanganometry — KMnO₄ as oxidising agent</p>
+          <p>• Dichromatometry — K₂Cr₂O₇ as oxidising agent</p>
+          <p>• Iodometry — Na₂S₂O₃ titrated against I₂</p>
+
+          <p class="syllabus-note">✅ Aligned with Grade 12 Chemistry syllabus</p>
+        </div>
+      </div>
     </div>
 
-    <div style="display:flex;gap:6px">
-      <button class="action-btn" id="uc-convert" style="flex:1">▸ CONVERT</button>
-      <button class="action-btn" id="uc-clear" style="flex:0 0 auto;padding:8px 14px;font-size:14px">CLEAR</button>
-    </div>
-    <div class="result-header"><span>Result:</span><button class="small-btn" onclick="copyResult('uc-result')">copy</button></div>
-    <div class="result-box" id="uc-result"></div>
+    <footer>
+      <p>No data leaves your browser. v1.1.0</p>
+    </footer>
   </div>
-</div>
 
-<!-- Titration Calculator -->
-<div class="section">
-  <button class="section-header" type="button">
-    ⚗️ Titration Calculator <span class="arrow">▶</span>
-  </button>
-  <div class="section-body">
-    <div class="sol-label">── Solution 1 ──</div>
-    <div class="row">
-      <div>
-        <label>Concentration</label>
-        <input type="number" id="tit-c1" placeholder="leave blank to solve" min="0" step="any">
-      </div>
-      <div>
-        <label>Unit</label>
-        <select id="tit-u1">
-          <option value="M">M</option>
-          <option value="N">N</option>
-        </select>
-      </div>
-    </div>
-    <div id="tit-nf1-wrap" class="conditional show">
-      <label>n-factor</label>
-      <input type="number" id="tit-nf1" placeholder="e.g. 2" min="0" step="any">
-    </div>
-    <label>Volume</label>
-    <input type="number" id="tit-v1" placeholder="leave blank to solve" min="0" step="any">
-
-    <div class="sol-label">── Solution 2 ──</div>
-    <div class="row">
-      <div>
-        <label>Concentration</label>
-        <input type="number" id="tit-c2" placeholder="leave blank to solve" min="0" step="any">
-      </div>
-      <div>
-        <label>Unit</label>
-        <select id="tit-u2">
-          <option value="M">M</option>
-          <option value="N">N</option>
-        </select>
-      </div>
-    </div>
-    <div id="tit-nf2-wrap" class="conditional show">
-      <label>n-factor</label>
-      <input type="number" id="tit-nf2" placeholder="e.g. 1" min="0" step="any">
-    </div>
-    <label>Volume</label>
-    <input type="number" id="tit-v2" placeholder="leave blank to solve" min="0" step="any">
-
-    <div style="display:flex;gap:6px">
-      <button class="action-btn" id="tit-solve" style="flex:1">▸ SOLVE</button>
-      <button class="action-btn" id="tit-clear" style="flex:0 0 auto;padding:8px 14px;font-size:14px">CLEAR</button>
-    </div>
-    <div class="result-header"><span>Result:</span><button class="small-btn" onclick="copyResult('tit-result')">copy</button></div>
-    <div class="result-box" id="tit-result"></div>
-    <div class="steps-box" id="tit-steps" style="display:none"></div>
-  </div>
-</div>
-
-<!-- Equivalent Weight -->
-<div class="section">
-  <button class="section-header" type="button">
-    ⚖️ Equivalent Weight <span class="arrow">▶</span>
-  </button>
-  <div class="section-body">
-    <label>Molar Mass (g/mol)</label>
-    <input type="number" id="ew-mm" placeholder="e.g. 98" min="0" step="any">
-    <label>n-factor</label>
-    <input type="number" id="ew-nf" placeholder="e.g. 2" min="0" step="any">
-
-    <div style="display:flex;gap:6px">
-      <button class="action-btn" id="ew-calc" style="flex:1">▸ CALCULATE</button>
-      <button class="action-btn" id="ew-clear" style="flex:0 0 auto;padding:8px 14px;font-size:14px">CLEAR</button>
-    </div>
-    <div class="result-header"><span>Result:</span><button class="small-btn" onclick="copyResult('ew-result')">copy</button></div>
-    <div class="result-box" id="ew-result"></div>
-  </div>
-</div>
-
-<script src="popup.js"></script>
+  <script src="popup.js"></script>
 </body>
 </html>
