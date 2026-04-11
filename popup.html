@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=380">
+  <link rel="stylesheet" href="popup.css">
+  <title>Volumetric Analyst</title>
+</head>
+<body>
+
+<h1><span class="flask">🧪</span> VOLUMETRIC ANALYST</h1>
+
+<div class="info-bar">
+  Based on Grade 12 Chemistry (Nepal Curriculum):<br>
+  Concentration units · Equivalent weight · Law of equivalence · Titration calculations
+</div>
+
+<!-- Unit Converter -->
+<div class="section">
+  <button class="section-header open" type="button">
+    🧮 Unit Converter <span class="arrow">▶</span>
+  </button>
+  <div class="section-body open">
+    <label>Value</label>
+    <input type="number" id="uc-val" placeholder="Enter value" min="0" step="any">
+
+    <div class="row">
+      <div>
+        <label>From</label>
+        <select id="uc-from">
+          <option value="M">Molarity (M)</option>
+          <option value="N">Normality (N)</option>
+          <option value="g/L">g/L</option>
+          <option value="%(w/v)">% (w/v)</option>
+          <option value="ppm">ppm</option>
+        </select>
+      </div>
+      <div>
+        <label>To</label>
+        <select id="uc-to">
+          <option value="M">Molarity (M)</option>
+          <option value="N" selected>Normality (N)</option>
+          <option value="g/L">g/L</option>
+          <option value="%(w/v)">% (w/v)</option>
+          <option value="ppm">ppm</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="uc-mm-wrap" class="conditional show">
+      <label>Molar Mass (g/mol)</label>
+      <input type="number" id="uc-mm" placeholder="e.g. 98" min="0" step="any">
+    </div>
+    <div id="uc-nf-wrap" class="conditional show">
+      <label>n-factor</label>
+      <input type="number" id="uc-nf" placeholder="e.g. 2" min="0" step="any">
+    </div>
+
+    <div style="display:flex;gap:6px">
+      <button class="action-btn" id="uc-convert" style="flex:1">▸ CONVERT</button>
+      <button class="action-btn" id="uc-clear" style="flex:0 0 auto;padding:8px 14px;font-size:14px">CLEAR</button>
+    </div>
+    <div class="result-header"><span>Result:</span><button class="small-btn" onclick="copyResult('uc-result')">copy</button></div>
+    <div class="result-box" id="uc-result"></div>
+  </div>
+</div>
+
+<!-- Titration Calculator -->
+<div class="section">
+  <button class="section-header" type="button">
+    ⚗️ Titration Calculator <span class="arrow">▶</span>
+  </button>
+  <div class="section-body">
+    <div class="sol-label">── Solution 1 ──</div>
+    <div class="row">
+      <div>
+        <label>Concentration</label>
+        <input type="number" id="tit-c1" placeholder="leave blank to solve" min="0" step="any">
+      </div>
+      <div>
+        <label>Unit</label>
+        <select id="tit-u1">
+          <option value="M">M</option>
+          <option value="N">N</option>
+        </select>
+      </div>
+    </div>
+    <div id="tit-nf1-wrap" class="conditional show">
+      <label>n-factor</label>
+      <input type="number" id="tit-nf1" placeholder="e.g. 2" min="0" step="any">
+    </div>
+    <label>Volume</label>
+    <input type="number" id="tit-v1" placeholder="leave blank to solve" min="0" step="any">
+
+    <div class="sol-label">── Solution 2 ──</div>
+    <div class="row">
+      <div>
+        <label>Concentration</label>
+        <input type="number" id="tit-c2" placeholder="leave blank to solve" min="0" step="any">
+      </div>
+      <div>
+        <label>Unit</label>
+        <select id="tit-u2">
+          <option value="M">M</option>
+          <option value="N">N</option>
+        </select>
+      </div>
+    </div>
+    <div id="tit-nf2-wrap" class="conditional show">
+      <label>n-factor</label>
+      <input type="number" id="tit-nf2" placeholder="e.g. 1" min="0" step="any">
+    </div>
+    <label>Volume</label>
+    <input type="number" id="tit-v2" placeholder="leave blank to solve" min="0" step="any">
+
+    <div style="display:flex;gap:6px">
+      <button class="action-btn" id="tit-solve" style="flex:1">▸ SOLVE</button>
+      <button class="action-btn" id="tit-clear" style="flex:0 0 auto;padding:8px 14px;font-size:14px">CLEAR</button>
+    </div>
+    <div class="result-header"><span>Result:</span><button class="small-btn" onclick="copyResult('tit-result')">copy</button></div>
+    <div class="result-box" id="tit-result"></div>
+    <div class="steps-box" id="tit-steps" style="display:none"></div>
+  </div>
+</div>
+
+<!-- Equivalent Weight -->
+<div class="section">
+  <button class="section-header" type="button">
+    ⚖️ Equivalent Weight <span class="arrow">▶</span>
+  </button>
+  <div class="section-body">
+    <label>Molar Mass (g/mol)</label>
+    <input type="number" id="ew-mm" placeholder="e.g. 98" min="0" step="any">
+    <label>n-factor</label>
+    <input type="number" id="ew-nf" placeholder="e.g. 2" min="0" step="any">
+
+    <div style="display:flex;gap:6px">
+      <button class="action-btn" id="ew-calc" style="flex:1">▸ CALCULATE</button>
+      <button class="action-btn" id="ew-clear" style="flex:0 0 auto;padding:8px 14px;font-size:14px">CLEAR</button>
+    </div>
+    <div class="result-header"><span>Result:</span><button class="small-btn" onclick="copyResult('ew-result')">copy</button></div>
+    <div class="result-box" id="ew-result"></div>
+  </div>
+</div>
+
+<script src="popup.js"></script>
+</body>
+</html>
