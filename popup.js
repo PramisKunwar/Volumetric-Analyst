@@ -1,217 +1,320 @@
-// --- Accordion logic ---
-document.querySelectorAll('.section-header').forEach(btn => {
+document.querySelectorAll('.accordion-btn').forEach(btn => {
   btn.addEventListener('click', () => {
-    btn.classList.toggle('open');
-    btn.nextElementSibling.classList.toggle('open');
+    const section = btn.dataset.section;
+    const panel = document.getElementById(section);
+    const isOpen = panel.style.display === 'block';
+    document.querySelectorAll('.accordion-panel').forEach(p => p.style.display = 'none');
+    document.querySelectorAll('.accordion-btn').forEach(b => {
+      b.classList.remove('active');
+      b.textContent = b.textContent.replace('▼', '▶');
+    });
+
+    if (!isOpen) {
+      panel.style.display = 'block';
+      btn.classList.add('active');
+      btn.textContent = btn.textContent.replace('▶', '▼');
+    }
   });
 });
-
-// --- Utility ---
-function showResult(id, text, isError = false) {
-  const el = document.getElementById(id);
+function showResult(el, text, isError) {
   el.textContent = text;
-  el.className = 'result-box' + (isError ? ' error' : '');
+  el.classList.add('visible');
+  el.classList.toggle('error', !!isError);
+  el.classList.toggle('success', !isError);
 }
 
-function copyResult(id) {
-  const text = document.getElementById(id).textContent;
-  if (text) navigator.clipboard.writeText(text);
+function showWorking(el, text) {
+  el.textContent = text;
+  el.classList.add('visible');
 }
 
-function saveInputs() {
-  const inputs = document.querySelectorAll('input, select');
-  const data = {};
-  inputs.forEach(el => { if (el.id) data[el.id] = el.value; });
-  try { localStorage.setItem('va_data', JSON.stringify(data)); } catch(e) {}
+function val(id) {
+  const v = document.getElementById(id).value.trim();
+  return v === '' ? null : parseFloat(v);
 }
 
-function loadInputs() {
-  try {
-    const data = JSON.parse(localStorage.getItem('va_data') || '{}');
-    Object.entries(data).forEach(([id, val]) => {
-      const el = document.getElementById(id);
-      if (el) { el.value = val; el.dispatchEvent(new Event('change')); }
-    });
-  } catch(e) {}
+function sel(id) {
+  return document.getElementById(id).value;
 }
 
-// --- Unit Converter ---
-const ucUnits = ['M', 'N', 'g/L', '%(w/v)', 'ppm'];
-const needsMM = (from, to) => {
-  const simple = ['g/L', '%(w/v)', 'ppm'];
-  if (simple.includes(from) && simple.includes(to)) return false;
-  return true;
+function round(n, d = 6) {
+  return parseFloat(n.toFixed(d));
+}
+const UNIT_LABELS = {
+  M: 'M', N: 'N', gL: 'g/L', pctWV: '% (w/v)', pctWW: '% (w/w)',
+  ppm: 'ppm', ppb: 'ppb', m: 'mol/kg (m)', F: 'F'
 };
-const needsNF = (from, to) => (from === 'M' && to === 'N') || (from === 'N' && to === 'M');
 
-function updateUCConditionals() {
-  const from = document.getElementById('uc-from').value;
-  const to = document.getElementById('uc-to').value;
-  document.getElementById('uc-mm-wrap').className = 'conditional' + (needsMM(from, to) ? ' show' : '');
-  document.getElementById('uc-nf-wrap').className = 'conditional' + (needsNF(from, to) ? ' show' : '');
+function toGL(value, from, mm, density, nf) {
+  switch (from) {
+    case 'M': return value * mm;
+    case 'F': return value * mm; 
+    case 'N': return (value / nf) * mm;
+    case 'gL': return value;
+    case 'pctWV': return value * 10;
+    case 'pctWW':
+      if (!density) throw 'Density required for % (w/w) conversion';
+      return value * density * 10;
+    case 'ppm': return value / 1000;
+    case 'ppb': return value / 1000000;
+    case 'm':
+      if (!density) throw 'Density required for molality conversion';
+      const M = (value * 1000 * density) / (1000 + value * mm);
+      return M * mm;
+    default: throw 'Unknown unit: ' + from;
+  }
 }
-
-document.getElementById('uc-from').addEventListener('change', updateUCConditionals);
-document.getElementById('uc-to').addEventListener('change', updateUCConditionals);
-
-function toGperL(val, unit, mm, nf) {
-  switch(unit) {
-    case 'M': return val * mm;
-    case 'N': return val * (mm / nf);
-    case 'g/L': return val;
-    case '%(w/v)': return val * 10;
-    case 'ppm': return val / 1000;
+function fromGL(gl, to, mm, density, nf) {
+  switch (to) {
+    case 'M': return gl / mm;
+    case 'F': return gl / mm;
+    case 'N': return (gl / mm) * nf;
+    case 'gL': return gl;
+    case 'pctWV': return gl / 10;
+    case 'pctWW':
+      if (!density) throw 'Density required for % (w/w) conversion';
+      return gl / (density * 10);
+    case 'ppm': return gl * 1000;
+    case 'ppb': return gl * 1000000;
+    case 'm':
+      if (!density) throw 'Density required for molality conversion';
+      const M = gl / mm;
+      return (1000 * M) / (1000 * density - M * mm);
+    default: throw 'Unknown unit: ' + to;
   }
 }
 
-function fromGperL(gpl, unit, mm, nf) {
-  switch(unit) {
-    case 'M': return gpl / mm;
-    case 'N': return gpl / (mm / nf);
-    case 'g/L': return gpl;
-    case '%(w/v)': return gpl / 10;
-    case 'ppm': return gpl * 1000;
+document.getElementById('conv-btn').addEventListener('click', () => {
+  const resEl = document.getElementById('conv-result');
+  try {
+    const v = val('conv-value');
+    if (v === null) throw 'Enter a value';
+    if (v < 0) throw 'Concentration cannot be negative';
+
+    const from = sel('conv-from');
+    const to = sel('conv-to');
+    const mm = val('conv-mm');
+    const density = val('conv-density');
+    const nf = val('conv-nfactor') || 1;
+
+    const needsMM = ['M', 'N', 'm', 'F'];
+    if ((needsMM.includes(from) || needsMM.includes(to)) && !mm) {
+      throw 'Molar mass required for this conversion';
+    }
+    if ((from === 'M' && to === 'N') || (from === 'N' && to === 'M')) {
+      if (!nf) throw 'n-factor required for M ↔ N conversion';
+    }
+
+    const gl = toGL(v, from, mm, density, nf);
+    const result = fromGL(gl, to, mm, density, nf);
+
+    showResult(resEl, `${v} ${UNIT_LABELS[from]} = ${round(result, 4)} ${UNIT_LABELS[to]}`, false);
+  } catch (e) {
+    showResult(resEl, '⚠ ' + e, true);
   }
-}
-
-document.getElementById('uc-convert').addEventListener('click', () => {
-  const val = parseFloat(document.getElementById('uc-val').value);
-  const from = document.getElementById('uc-from').value;
-  const to = document.getElementById('uc-to').value;
-  const mm = parseFloat(document.getElementById('uc-mm').value);
-  const nf = parseFloat(document.getElementById('uc-nf').value);
-
-  if (isNaN(val) || val < 0) return showResult('uc-result', 'Invalid input', true);
-  if (from === to) return showResult('uc-result', val + ' ' + to);
-  if (needsMM(from, to) && (isNaN(mm) || mm <= 0)) return showResult('uc-result', 'Enter molar mass', true);
-  if (needsNF(from, to) && (isNaN(nf) || nf <= 0)) return showResult('uc-result', 'Enter n-factor', true);
-
-  const gpl = toGperL(val, from, mm, nf);
-  const result = fromGperL(gpl, to, mm, nf);
-  showResult('uc-result', result.toFixed(4) + ' ' + to);
-  saveInputs();
 });
 
-document.getElementById('uc-clear').addEventListener('click', () => {
-  ['uc-val','uc-mm','uc-nf'].forEach(id => document.getElementById(id).value = '');
-  showResult('uc-result', '');
-});
+const INDICATOR_NOTES = {
+  'sa-sb': 'Any indicator (Methyl orange or Phenolphthalein)',
+  'wa-sb': 'Phenolphthalein (pH 8–10)',
+  'sa-wb': 'Methyl orange (pH 3–5)',
+  'permanganometry': 'Self-indicator — KMnO₄ (pink → colourless)',
+  'dichromatometry': 'External indicator needed (orange → light green is hard to see)',
+  'iodometry': 'Starch indicator (blue → colourless)',
+  'redox': 'Self-indicator (KMnO₄) or Starch (for I₂ titrations)'
+};
 
-// --- Titration Calculator ---
-function updateTitConditionals() {
-  const u1 = document.getElementById('tit-u1').value;
-  const u2 = document.getElementById('tit-u2').value;
-  document.getElementById('tit-nf1-wrap').className = 'conditional' + (u1 === 'M' ? ' show' : '');
-  document.getElementById('tit-nf2-wrap').className = 'conditional' + (u2 === 'M' ? ' show' : '');
-}
-document.getElementById('tit-u1').addEventListener('change', updateTitConditionals);
-document.getElementById('tit-u2').addEventListener('change', updateTitConditionals);
+document.getElementById('titr-btn').addEventListener('click', () => {
+  const resEl = document.getElementById('titr-result');
+  const workEl = document.getElementById('titr-working');
+  workEl.classList.remove('visible');
 
-document.getElementById('tit-solve').addEventListener('click', () => {
-  let c1 = document.getElementById('tit-c1').value.trim();
-  let v1 = document.getElementById('tit-v1').value.trim();
-  let c2 = document.getElementById('tit-c2').value.trim();
-  let v2 = document.getElementById('tit-v2').value.trim();
-  const u1 = document.getElementById('tit-u1').value;
-  const u2 = document.getElementById('tit-u2').value;
-  const nf1 = parseFloat(document.getElementById('tit-nf1').value);
-  const nf2 = parseFloat(document.getElementById('tit-nf2').value);
+  try {
+    const c1 = val('t-c1');
+    const u1 = sel('t-u1');
+    const n1 = val('t-n1') || 1;
+    const v1 = val('t-v1');
+    const c2 = val('t-c2');
+    const u2 = sel('t-u2');
+    const n2 = val('t-n2') || 1;
+    const v2 = val('t-v2');
+    const tType = sel('t-type');
 
-  // Count blanks
-  const fields = [c1, v1, c2, v2];
-  const blanks = fields.filter(f => f === '').length;
-  if (blanks !== 1) return showResult('tit-result', 'Leave exactly ONE field empty to solve', true);
+    [c1, c2, v1, v2].forEach(x => {
+      if (x !== null && x < 0) throw 'Values cannot be negative';
+    });
 
-  // Parse
-  c1 = c1 === '' ? null : parseFloat(c1);
-  v1 = v1 === '' ? null : parseFloat(v1);
-  c2 = c2 === '' ? null : parseFloat(c2);
-  v2 = v2 === '' ? null : parseFloat(v2);
+    const fields = [
+      { name: 'C₁', val: c1, id: 'c1' },
+      { name: 'V₁', val: v1, id: 'v1' },
+      { name: 'C₂', val: c2, id: 'c2' },
+      { name: 'V₂', val: v2, id: 'v2' }
+    ];
+    const blanks = fields.filter(f => f.val === null);
 
-  // Validate
-  for (const v of [c1,v1,c2,v2]) {
-    if (v !== null && (isNaN(v) || v < 0)) return showResult('tit-result', 'Invalid input', true);
+    if (blanks.length !== 1) {
+      throw 'Leave exactly one field blank. Currently ' + blanks.length + ' blank.';
+    }
+
+    const unknown = blanks[0];
+
+    const N1 = c1 !== null ? (u1 === 'M' ? c1 * n1 : c1) : null;
+    const N2 = c2 !== null ? (u2 === 'M' ? c2 * n2 : c2) : null;
+
+    let answer, working = [];
+    working.push('Using: N₁V₁ = N₂V₂  (Law of Equivalence, §1.6)');
+
+    if (unknown.id === 'c2') {
+      const ansN = (N1 * v1) / v2;
+      const ansC = u2 === 'M' ? ansN / n2 : ansN;
+      answer = round(ansC, 4);
+      working.push(`\nStep 1: Convert to Normality (N = M × n-factor)`);
+      if (u1 === 'M') working.push(`  N₁ = ${c1} × ${n1} = ${N1} N`);
+      else working.push(`  N₁ = ${N1} N`);
+      working.push(`\nStep 2: Apply N₁V₁ = N₂V₂`);
+      working.push(`  ${N1} × ${v1} = N₂ × ${v2}`);
+      working.push(`  N₂ = ${round(ansN, 4)} N`);
+      if (u2 === 'M') {
+        working.push(`\nStep 3: Convert back to Molarity`);
+        working.push(`  M₂ = ${round(ansN, 4)} ÷ ${n2} = ${answer} M`);
+      }
+      showResult(resEl, `C₂ = ${answer} ${u2}`, false);
+    } else if (unknown.id === 'v2') {
+      const ansV = (N1 * v1) / N2;
+      answer = round(ansV, 4);
+      working.push(`\nStep 1: Convert to Normality`);
+      if (u1 === 'M') working.push(`  N₁ = ${c1} × ${n1} = ${N1} N`);
+      if (u2 === 'M') working.push(`  N₂ = ${c2} × ${n2} = ${N2} N`);
+      working.push(`\nStep 2: Apply N₁V₁ = N₂V₂`);
+      working.push(`  ${N1} × ${v1} = ${N2} × V₂`);
+      working.push(`  V₂ = ${answer} mL`);
+      showResult(resEl, `V₂ = ${answer} mL`, false);
+    } else if (unknown.id === 'c1') {
+      const ansN = (N2 * v2) / v1;
+      const ansC = u1 === 'M' ? ansN / n1 : ansN;
+      answer = round(ansC, 4);
+      working.push(`\nStep 1: Convert to Normality`);
+      if (u2 === 'M') working.push(`  N₂ = ${c2} × ${n2} = ${N2} N`);
+      working.push(`\nStep 2: Apply N₁V₁ = N₂V₂`);
+      working.push(`  N₁ × ${v1} = ${N2} × ${v2}`);
+      working.push(`  N₁ = ${round(ansN, 4)} N`);
+      if (u1 === 'M') {
+        working.push(`\nStep 3: Convert back to Molarity`);
+        working.push(`  M₁ = ${round(ansN, 4)} ÷ ${n1} = ${answer} M`);
+      }
+      showResult(resEl, `C₁ = ${answer} ${u1}`, false);
+    } else if (unknown.id === 'v1') {
+      const ansV = (N2 * v2) / N1;
+      answer = round(ansV, 4);
+      working.push(`\nStep 1: Convert to Normality`);
+      if (u1 === 'M') working.push(`  N₁ = ${c1} × ${n1} = ${N1} N`);
+      if (u2 === 'M') working.push(`  N₂ = ${c2} × ${n2} = ${N2} N`);
+      working.push(`\nStep 2: Apply N₁V₁ = N₂V₂`);
+      working.push(`  N₁ × V₁ = ${N2} × ${v2}`);
+      working.push(`  V₁ = ${answer} mL`);
+      showResult(resEl, `V₁ = ${answer} mL`, false);
+    }
+
+    working.push(`\nIndicator: ${INDICATOR_NOTES[tType]}`);
+    showWorking(workEl, working.join('\n'));
+
+  } catch (e) {
+    showResult(resEl, '⚠ ' + e, true);
+    workEl.classList.remove('visible');
   }
+});
 
-  if (u1 === 'M' && (c1 !== null) && (isNaN(nf1) || nf1 <= 0)) return showResult('tit-result', 'Enter n-factor for Solution 1', true);
-  if (u2 === 'M' && (c2 !== null) && (isNaN(nf2) || nf2 <= 0)) return showResult('tit-result', 'Enter n-factor for Solution 2', true);
-  // If solving for c1 and u1=M, we need nf1
-  if (c1 === null && u1 === 'M' && (isNaN(nf1) || nf1 <= 0)) return showResult('tit-result', 'Enter n-factor for Solution 1', true);
-  if (c2 === null && u2 === 'M' && (isNaN(nf2) || nf2 <= 0)) return showResult('tit-result', 'Enter n-factor for Solution 2', true);
+document.getElementById('dil-btn').addEventListener('click', () => {
+  const resEl = document.getElementById('dil-result');
+  const workEl = document.getElementById('dil-working');
+  workEl.classList.remove('visible');
 
-  // Convert to normality
-  let N1 = c1 !== null ? (u1 === 'M' ? c1 * nf1 : c1) : null;
-  let N2 = c2 !== null ? (u2 === 'M' ? c2 * nf2 : c2) : null;
+  try {
+    const m1 = val('d-m1');
+    const v1 = val('d-v1');
+    const m2 = val('d-m2');
+    const v2 = val('d-v2');
 
-  let steps = [];
-  let answer = '';
+    [m1, m2, v1, v2].forEach(x => {
+      if (x !== null && x < 0) throw 'Values cannot be negative';
+    });
 
-  // N1*V1 = N2*V2, solve for unknown
-  if (N1 === null) {
-    // solving for c1
-    N1 = (N2 * v2) / v1;
-    const display = u1 === 'M' ? (N1 / nf1) : N1;
-    const displayUnit = u1 === 'M' ? 'M' : 'N';
-    if (u2 === 'M') steps.push(`N₂ = ${c2} × ${nf2} = ${N2} N`);
-    steps.push(`N₁ × ${v1} = ${N2} × ${v2}`);
-    steps.push(`N₁ = ${(N2*v2).toFixed(4)} / ${v1} = ${N1.toFixed(4)} N`);
-    if (u1 === 'M') steps.push(`M₁ = ${N1.toFixed(4)} / ${nf1} = ${display.toFixed(4)} M`);
-    answer = `${display.toFixed(4)} ${displayUnit}`;
-  } else if (v1 === null) {
-    v1 = (N2 * v2) / N1;
-    if (u1 === 'M') steps.push(`N₁ = ${c1} × ${nf1} = ${N1} N`);
-    if (u2 === 'M') steps.push(`N₂ = ${c2} × ${nf2} = ${N2} N`);
-    steps.push(`${N1} × V₁ = ${N2} × ${v2}`);
-    steps.push(`V₁ = ${(N2*v2).toFixed(4)} / ${N1} = ${v1.toFixed(4)}`);
-    answer = `V₁ = ${v1.toFixed(4)}`;
-  } else if (N2 === null) {
-    N2 = (N1 * v1) / v2;
-    const display = u2 === 'M' ? (N2 / nf2) : N2;
-    const displayUnit = u2 === 'M' ? 'M' : 'N';
-    if (u1 === 'M') steps.push(`N₁ = ${c1} × ${nf1} = ${N1} N`);
-    steps.push(`${N1} × ${v1} = N₂ × ${v2}`);
-    steps.push(`N₂ = ${(N1*v1).toFixed(4)} / ${v2} = ${N2.toFixed(4)} N`);
-    if (u2 === 'M') steps.push(`M₂ = ${N2.toFixed(4)} / ${nf2} = ${display.toFixed(4)} M`);
-    answer = `${display.toFixed(4)} ${displayUnit}`;
-  } else {
-    v2 = (N1 * v1) / N2;
-    if (u1 === 'M') steps.push(`N₁ = ${c1} × ${nf1} = ${N1} N`);
-    if (u2 === 'M') steps.push(`N₂ = ${c2} × ${nf2} = ${N2} N`);
-    steps.push(`${N1} × ${v1} = ${N2} × V₂`);
-    steps.push(`V₂ = ${(N1*v1).toFixed(4)} / ${N2} = ${v2.toFixed(4)}`);
-    answer = `V₂ = ${v2.toFixed(4)}`;
+    const fields = [
+      { name: 'M₁', val: m1, id: 'm1' },
+      { name: 'V₁', val: v1, id: 'v1' },
+      { name: 'M₂', val: m2, id: 'm2' },
+      { name: 'V₂', val: v2, id: 'v2' }
+    ];
+    const blanks = fields.filter(f => f.val === null);
+
+    if (blanks.length !== 1) {
+      throw 'Leave exactly one field blank. Currently ' + blanks.length + ' blank.';
+    }
+
+    const unknown = blanks[0];
+    let answer, working = [];
+    working.push('M₁V₁ = M₂V₂  (Moles before = Moles after dilution, §1.6)');
+
+    if (unknown.id === 'm1') {
+      answer = round((m2 * v2) / v1, 4);
+      working.push(`${answer} × ${v1} = ${m2} × ${v2}`);
+      working.push(`M₁ = ${answer} M`);
+      showResult(resEl, `M₁ = ${answer} M`, false);
+    } else if (unknown.id === 'v1') {
+      answer = round((m2 * v2) / m1, 4);
+      working.push(`${m1} × V₁ = ${m2} × ${v2}`);
+      working.push(`V₁ = ${answer} mL`);
+      showResult(resEl, `V₁ = ${answer} mL`, false);
+    } else if (unknown.id === 'm2') {
+      answer = round((m1 * v1) / v2, 4);
+      working.push(`${m1} × ${v1} = M₂ × ${v2}`);
+      working.push(`M₂ = ${answer} M`);
+      showResult(resEl, `M₂ = ${answer} M`, false);
+    } else if (unknown.id === 'v2') {
+      answer = round((m1 * v1) / m2, 4);
+      working.push(`${m1} × ${v1} = ${m2} × V₂`);
+      working.push(`V₂ = ${answer} mL`);
+      showResult(resEl, `V₂ = ${answer} mL`, false);
+    }
+
+    if (unknown.id === 'v2' && v1 !== null) {
+      const waterToAdd = round(answer - v1, 4);
+      if (waterToAdd > 0) {
+        working.push(`\nWater to add = ${answer} − ${v1} = ${waterToAdd} mL`);
+      }
+    }
+
+    showWorking(workEl, working.join('\n'));
+
+  } catch (e) {
+    showResult(resEl, '⚠ ' + e, true);
+    workEl.classList.remove('visible');
   }
-
-  showResult('tit-result', '▸ ' + answer);
-  document.getElementById('tit-steps').textContent = steps.join('\n');
-  document.getElementById('tit-steps').style.display = 'block';
-  saveInputs();
 });
 
-document.getElementById('tit-clear').addEventListener('click', () => {
-  ['tit-c1','tit-v1','tit-c2','tit-v2','tit-nf1','tit-nf2'].forEach(id => document.getElementById(id).value = '');
-  showResult('tit-result', '');
-  document.getElementById('tit-steps').style.display = 'none';
-  document.getElementById('tit-steps').textContent = '';
+document.getElementById('eq-btn').addEventListener('click', () => {
+  const resEl = document.getElementById('eq-result');
+  try {
+    const mm = val('eq-mm');
+    const nf = val('eq-nf');
+    if (!mm) throw 'Enter molar mass';
+    if (!nf || nf <= 0) throw 'Enter a valid n-factor (> 0)';
+    if (mm < 0) throw 'Molar mass cannot be negative';
+
+    const eqwt = round(mm / nf, 4);
+    const type = sel('eq-type');
+    const typeLabels = {
+      acid: 'basicity', base: 'acidity', salt: 'total charge',
+      oxidising: 'electrons gained', reducing: 'electrons lost',
+      element: 'valency', radical: 'charge'
+    };
+    showResult(resEl, `Eq. wt. = ${mm} ÷ ${nf} (${typeLabels[type]}) = ${eqwt} g/eq`, false);
+  } catch (e) {
+    showResult(resEl, '⚠ ' + e, true);
+  }
 });
 
-// --- Equivalent Weight ---
-document.getElementById('ew-calc').addEventListener('click', () => {
-  const mm = parseFloat(document.getElementById('ew-mm').value);
-  const nf = parseFloat(document.getElementById('ew-nf').value);
-  if (isNaN(mm) || mm <= 0) return showResult('ew-result', 'Enter valid molar mass', true);
-  if (isNaN(nf) || nf <= 0) return showResult('ew-result', 'Enter valid n-factor', true);
-  const ew = mm / nf;
-  showResult('ew-result', ew.toFixed(4) + ' g/eq');
-  saveInputs();
+document.getElementById('eq-example-btn').addEventListener('click', () => {
+  const box = document.getElementById('eq-examples');
+  box.style.display = box.style.display === 'none' ? 'block' : 'none';
 });
-
-document.getElementById('ew-clear').addEventListener('click', () => {
-  ['ew-mm','ew-nf'].forEach(id => document.getElementById(id).value = '');
-  showResult('ew-result', '');
-});
-
-// Load saved inputs on start
-updateUCConditionals();
-updateTitConditionals();
-loadInputs();
