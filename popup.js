@@ -162,7 +162,7 @@ document.getElementById('titr-btn').addEventListener('click', () => {
     const N2 = c2 !== null ? (u2 === 'M' ? c2 * n2 : c2) : null;
 
     let answer, working = [];
-    working.push('Using: N₁V₁ = N₂V₂  (Law of Equivalence, §1.6)');
+    working.push('Using: N₁V₁ = N₂V₂  (Law of Equivalence, 1.6)');
 
     if (unknown.id === 'c2') {
       const ansN = (N1 * v1) / v2;
@@ -253,7 +253,7 @@ document.getElementById('dil-btn').addEventListener('click', () => {
 
     const unknown = blanks[0];
     let answer, working = [];
-    working.push('M₁V₁ = M₂V₂  (Moles before = Moles after dilution, §1.6)');
+    working.push('M₁V₁ = M₂V₂  (Moles before = Moles after dilution, 1.6)');
 
     if (unknown.id === 'm1') {
       answer = round((m2 * v2) / v1, 4);
