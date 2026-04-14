@@ -1,4 +1,4 @@
-# 🧪 Volumetric Analyst
+# Volumetric Analyst
 
 A Chrome extension for Grade 12 Chemistry students covering concentration unit conversion, titration solving, dilution calculations, and equivalent weight computation.
 
